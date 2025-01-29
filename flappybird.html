@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird Clone</title>
+<style>/* Body styling */
+    body {
+        font-family: 'Arial', sans-serif;
+        background: linear-gradient(to right, #a8c0ff, #3f2b96); /* Smooth blue gradient background */
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        overflow: hidden;
+    }
+    
+    /* Game container */
+    .game-container {
+        position: relative;
+        text-align: center;
+    }
+    
+    /* Canvas styling */
+    canvas {
+        border-radius: 10px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.5); /* Adding shadow for depth */
+        border: none;
+        background: #f8f8f8; /* Light background */
+    }
+    
+    /* Game Over screen */
+    #gameOver {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+    }
+    
+    /* Restart Button styling */
+    button {
+        background-color: #ff9f00; /* Orange color */
+        border: none;
+        padding: 10px 20px;
+        color: white;
+        font-size: 18px;
+        border-radius: 5px;
+        cursor: pointer;
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease-in-out;
+    }
+    
+    button:hover {
+        background-color: #ff7f00;
+        transform: scale(1.1);
+    }
+    
+    /* Score styling */
+    #score {
+        font-size: 24px;
+        color: #fff;
+        font-weight: bold;
+        text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.6);
+    }
+    
+    /* Game Over score display */
+    #gameOver p {
+        font-size: 32px;
+        margin: 10px;
+        color: #fff;
+    }</style></head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <div id="gameOver" style="display: none;">
+            <p>Game Over! Score: <span id="finalScore">0</span></p>
+            <button onclick="restartGame()">Restart</button>
+        </div>
+    </div>
+    <script>// Get canvas and context
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        
+        // Game variables
+        const bird = {
+            x: 50,
+            y: canvas.height / 2,
+            width: 40,
+            height: 40,
+            gravity: 0.6,
+            lift: -15,
+            velocity: 0
+        };
+        
+        let pipes = [];
+        let pipeWidth = 60;
+        let gap = 200;
+        let pipeSpeed = 3;
+        let score = 0;
+        let isGameOver = false;
+        let gameInterval;
+        let birdImage = new Image();
+        birdImage.src = "https://img.icons8.com/ios/452/bird.png"; // Bird image URL
+        
+        // Add event listener for bird movement
+        document.addEventListener("click", () => {
+            if (!isGameOver) {
+                bird.velocity = bird.lift; // Make the bird fly
+            }
+        });
+        
+        // Create a new pipe
+        function createPipe() {
+            const pipeHeight = Math.floor(Math.random() * (canvas.height - gap));
+            const topPipe = { x: canvas.width, y: 0, width: pipeWidth, height: pipeHeight };
+            const bottomPipe = { x: canvas.width, y: pipeHeight + gap, width: pipeWidth, height: canvas.height - pipeHeight - gap };
+            pipes.push(topPipe, bottomPipe);
+        }
+        
+        // Draw the bird
+        function drawBird() {
+            ctx.drawImage(birdImage, bird.x, bird.y, bird.width, bird.height);
+        }
+        
+        // Draw the pipes with gradient colors
+        function drawPipes() {
+            pipes.forEach(pipe => {
+                const pipeGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                pipeGradient.addColorStop(0, "#4caf50"); // Green color for top pipe
+                pipeGradient.addColorStop(1, "#2e7d32"); // Darker green for bottom pipe
+        
+                ctx.fillStyle = pipeGradient;
+                ctx.fillRect(pipe.x, pipe.y, pipe.width, pipe.height);
+            });
+        }
+        
+        // Move the pipes
+        function movePipes() {
+            pipes.forEach(pipe => {
+                pipe.x -= pipeSpeed;
+            });
+        }
+        
+        // Check for collisions
+        function checkCollisions() {
+            // Check if bird hits the ground or top of the canvas
+            if (bird.y + bird.height > canvas.height || bird.y < 0) {
+                gameOver();
+            }
+        
+            // Check for collision with pipes
+            pipes.forEach(pipe => {
+                if (bird.x + bird.width > pipe.x && bird.x < pipe.x + pipe.width &&
+                    bird.y + bird.height > pipe.y && bird.y < pipe.y + pipe.height) {
+                    gameOver();
+                }
+            });
+        }
+        
+        // Update game logic
+        function updateGame() {
+            if (isGameOver) return;
+        
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+            // Create background gradient
+            const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGradient.addColorStop(0, "#56ccf2"); // Light blue
+            bgGradient.addColorStop(1, "#2f80ed"); // Dark blue
+        
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+            // Apply gravity
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+        
+            // Create new pipes and remove old ones
+            if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 300) {
+                createPipe();
+            }
+        
+            movePipes();
+            drawPipes();
+            drawBird();
+        
+            // Remove pipes that go off-screen
+            pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+        
+            // Update score
+            pipes.forEach(pipe => {
+                if (pipe.x + pipe.width < bird.x && !pipe.passed) {
+                    pipe.passed = true;
+                    score++;
+                }
+            });
+        
+            // Draw score with a nice font
+            ctx.fillStyle = "#fff";
+            ctx.font = "30px 'Press Start 2P', cursive";
+            ctx.fillText("Score: " + score, 10, 30);
+        
+            // Check for collisions
+            checkCollisions();
+        
+            // Loop the game
+            requestAnimationFrame(updateGame);
+        }
+        
+        // Game Over function
+        function gameOver() {
+            isGameOver = true;
+            document.getElementById("finalScore").textContent = score;
+            document.getElementById("gameOver").style.display = "block";
+            cancelAnimationFrame(gameInterval);
+        }
+        
+        // Restart game
+        function restartGame() {
+            isGameOver = false;
+            bird.y = canvas.height / 2;
+            bird.velocity = 0;
+            pipes = [];
+            score = 0;
+            document.getElementById("gameOver").style.display = "none";
+            updateGame();
+        }
+        
+        // Start the game
+        updateGame();</script>
+</body>
+</html>
